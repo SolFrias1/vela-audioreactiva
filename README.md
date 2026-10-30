@@ -35,7 +35,7 @@ La plataforma está diseñada no como un reproductor estático, sino como un sin
 *Tiempo de Extinción: Permite coreografiar el destino fatal de la vela, determinando cuándo la llama colapsa en humo y el color transiciona a la ceniza.
 *Modos de Visualización: El botón 📱 Marco 9:16 / ⛶ Full Pantalla permite alternar entre el encuadre cerrado para dispositivos móviles (donde la vela es protagonista absoluta) y una experiencia inmersiva atmosférica con márgenes oscuros y letras flotantes.
 
-##¿Qué parámetros del sonido se modifican/analizan y por qué esos?
+## ¿Qué parámetros del sonido se modifican/analizan y por qué esos?
 * **A través de la Web Audio API y un analizador FFT (Fast Fourier Transform), se descompone la señal en bandas específicas:
 
 * **Graves y Bombo (~40Hz – 200Hz):
