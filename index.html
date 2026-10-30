@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crisol Audioreactivo — Vela Final (Full Song & Beat Tight Sync)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="candle_b64.js"></script>
+  <script src="song_b64.js"></script>
+  <style>
+    :root {
+      --bg: #030305;
+      --card-bg: rgba(14, 14, 20, 0.90);
+      --card-border: rgba(255, 175, 75, 0.25);
+      --accent: #ff8822;
+      --accent-glow: rgba(255, 136, 34, 0.45);
+      --text: #f2f2f7;
+      --text-muted: #9191a3;
+      --gold: #f5c46e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #stage-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #020204;
+    }
+
+    /* Modo 1: Marco 9:16 Simulado de Teléfono */
+    .viewport-9-16 {
+      position: relative;
+      height: 94vh;
+      aspect-ratio: 9 / 16;
+      max-width: calc(94vh * 9 / 16);
+      background: #000;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), 0 0 25px var(--accent-glow);
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 140, 40, 0.32);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Modo 2: Pantalla Completa Inmersiva */
+    .viewport-full {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+    }
+
+    #gl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    #particles-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Guías sutiles de encuadre 9:16 en modo Pantalla Completa */
+    #guidelines-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+      display: none;
+    }
+
+    .guide-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      border-left: 1px dashed rgba(255, 180, 80, 0.20);
+    }
+
+    .guide-tag {
+      display: none !important;
+    }
+
+    #source-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: -999;
+    }
+
+    /* BARRA DE REPRODUCCIÓN FLOTANTE Y ARRASTRABLE (DRAGGABLE) */
+    #player-controls {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      width: 360px;
+      z-index: 40;
+      background: var(--card-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #player-controls:active {
+      cursor: grabbing;
+    }
+
+    #player-controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .player-drag-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.63rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 4px;
+      margin-bottom: 2px;
+    }
+
+    .drag-dots {
+      letter-spacing: 2px;
+      color: var(--gold);
+      font-size: 0.8rem;
+    }
+
+    .timeline-container {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .timeline-progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff5500, #ffaa00);
+      border-radius: 3px;
+      position: relative;
+    }
+
+    .timeline-scrubber {
+      position: absolute;
+      right: -5px;
+      top: -3px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    }
+
+    .timeline-extinction-marker {
+      position: absolute;
+      top: -2px;
+      width: 2px;
+      height: 10px;
+      background: #ff2222;
+      box-shadow: 0 0 6px #ff3333;
+      pointer-events: none;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+    }
+
+    .left-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--gold);
+    }
+
+    .time-display {
+      font-family: monospace;
+      font-size: 0.70rem;
+      color: var(--gold);
+    }
+
+    /* Panel de Control Lateral */
+    #controls-panel {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      width: 320px;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      z-index: 50;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+    }
+
+    #controls-panel.hidden {
+      transform: translateX(360px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.92rem;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .badge {
+      font-size: 0.60rem;
+      letter-spacing: 0.08em;
+      background: rgba(255, 140, 30, 0.18);
+      color: #ffaa55;
+      padding: 3px 7px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 140, 30, 0.35);
+      text-transform: uppercase;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Medidores de Audio */
+    .audio-meters {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .meter-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meter-bar-track {
+      width: 12px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .meter-fill {
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(to top, #ff3b00, #ffaa00, #fff4aa);
+      border-radius: 6px;
+      transition: height 0.04s linear;
+      box-shadow: 0 0 8px rgba(255, 120, 0, 0.6);
+    }
+
+    .meter-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .beat-pulse-badge {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      transition: background-color 0.06s ease, transform 0.06s ease;
+    }
+
+    .beat-pulse-badge.active {
+      background: #ff2a00;
+      box-shadow: 0 0 10px #ff3b00;
+      transform: scale(1.45);
+    }
+
+    /* Botones */
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text);
+      padding: 7px 8px;
+      border-radius: 8px;
+      font-size: 0.70rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 140, 30, 0.18);
+      border-color: rgba(255, 140, 30, 0.4);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #e65c00 0%, #f9d423 100%);
+      color: #080503;
+      font-weight: 700;
+      border: none;
+      box-shadow: 0 4px 14px rgba(230, 92, 0, 0.35);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(230, 92, 0, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-extinction {
+      background: rgba(180, 40, 40, 0.2);
+      border-color: rgba(255, 60, 60, 0.4);
+      color: #ff8888;
+      font-weight: 600;
+    }
+
+    .btn-extinction.active {
+      background: #ff2a2a;
+      color: #fff;
+      box-shadow: 0 0 14px rgba(255, 42, 42, 0.7);
+    }
+
+    .btn-rec {
+      background: rgba(255, 40, 40, 0.15);
+      border-color: rgba(255, 40, 40, 0.35);
+      color: #ff6b6b;
+    }
+
+    .btn-rec.recording {
+      background: #ff2a2a;
+      color: #fff;
+      animation: pulse-rec 1s infinite alternate;
+    }
+
+    @keyframes pulse-rec {
+      from { box-shadow: 0 0 6px #ff2a2a; }
+      to { box-shadow: 0 0 16px #ff2a2a; }
+    }
+
+    /* Sliders */
+    .param-group {
+      margin-bottom: 9px;
+    }
+
+    .param-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.67rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .param-val {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--gold);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(244, 192, 104, 0.8);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .section-title {
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 10px 0 6px 0;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #toggle-ui-btn {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 60;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    #toggle-ui-btn:hover {
+      transform: scale(1.1);
+      border-color: var(--accent);
+    }
+
+    #song-tag {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 40;
+      background: rgba(12, 12, 16, 0.80);
+      backdrop-filter: blur(12px);
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    #song-tag strong {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .song-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00ff88;
+      box-shadow: 0 0 8px #00ff88;
+    }
+
+    #video-file-input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stage-container">
+    <div id="viewport" class="viewport-9-16">
+      
+      <!-- Canvas WebGL: Deformación, licuefacción instantánea, extinción y blanco y negro -->
+      <canvas id="gl-canvas"></canvas>
+
+      <!-- Canvas 2D: Chispas, cenizas y ECOS ESPECTRALES DE LYRICS EN HUMO -->
+      <canvas id="particles-canvas"></canvas>
+
+      <!-- Guías de encuadre 9:16 en pantalla completa (sin texto invasivo) -->
+      <div id="guidelines-overlay">
+        <div class="guide-line" id="guide-left"></div>
+        <div class="guide-line" id="guide-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA DE REPRODUCCIÓN FLOTANTE Y ARRASTRABLE (Fuera del frame 9:16) -->
+  <div id="player-controls">
+    <div class="player-drag-header" id="drag-handle" title="Arrastra para mover la barra a cualquier esquina">
+      <span class="drag-dots">⋮⋮</span>
+      <span id="aspect-mode-tag" style="color: var(--gold); font-size: 0.62rem;">Canción Completa (2:57 min)</span>
+      <span style="font-size: 0.58rem; color: var(--text-muted);">Arrastra para mover</span>
+    </div>
+    <div class="timeline-container" id="timeline">
+      <div class="timeline-progress" id="timeline-progress">
+        <div class="timeline-scrubber"></div>
+      </div>
+      <div class="timeline-extinction-marker" id="extinction-marker" title="Momento de Extinción"></div>
+    </div>
+    <div class="controls-row">
+      <div class="left-controls">
+        <button class="btn-icon" id="video-play-btn" title="Reproducir / Pausar">▶</button>
+        <button class="btn-icon" id="video-mute-btn" title="Silenciar / Activar Sonido">🔊</button>
+        <span class="time-display" id="time-display">00:00 / 02:57</span>
+      </div>
+      <div>
+        <button class="btn-icon" id="loop-mode-btn" title="Alternar entre Canción Completa y Video 60s" style="font-size: 0.65rem; color: var(--gold); padding: 2px 6px;">
+          🎵 Full (2:57)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video fuente y Audio de la canción completa -->
+  <video id="source-video" playsinline preload="auto" loop></video>
+  <audio id="master-audio" preload="auto"></audio>
+
+  <!-- Botón toggle de UI -->
+  <button id="toggle-ui-btn" title="Ocultar / Mostrar Controles (Tecla H)">⚙</button>
+
+  <!-- Panel de Control Flotante -->
+  <div id="controls-panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">CRISOL AUDIOREACTIVO</div>
+        <div style="font-size: 0.60rem; color: var(--text-muted);">Vela Audioreactiva • DPPI 2026</div>
+      </div>
+      <span class="badge" id="source-badge">Piedad (Full 2:57)</span>
+    </div>
+
+    <!-- Medidores de Audio -->
+    <div class="audio-meters">
+      <div class="meter-col">
+        <div class="meter-bar-track"><div class="meter-fill" id="meter-bass"></div></div>
+        <span class="meter-label">Graves</span>
+        <div class="beat-pulse-badge" id="beat-indicator" title="Golpe / Beat"></div>
+      </div>
+      <div class="meter-col">
+        <div class="meter-bar-track"><div class="meter-fill" id="meter-mid"></div></div>
+        <span class="meter-label">Medios</span>
+      </div>
+      <div class="meter-col">
+        <div class="meter-bar-track"><div class="meter-fill" id="meter-treble"></div></div>
+        <span class="meter-label">Agudos</span>
+      </div>
+      <div class="meter-col">
+        <div class="meter-bar-track"><div class="meter-fill" id="meter-melt"></div></div>
+        <span class="meter-label">Derretir</span>
+      </div>
+    </div>
+
+    <!-- Botones Principales -->
+    <div class="btn-row">
+      <button class="btn btn-primary" id="main-play-btn" style="flex: 1.1;">
+        <span id="main-play-icon">▶</span> <span id="main-play-text">Reproducir</span>
+      </button>
+      <button class="btn" id="upload-video-btn" title="Cargar video de la vela (MP4 / MOV)">
+        📂 Video
+      </button>
+      <button class="btn" id="upload-audio-btn" title="Cargar canción chilena (MP3 / WAV)">
+        🎵 Canción
+      </button>
+      <button class="btn" id="mic-btn" title="Escuchar sonido por micrófono">
+        🎤 Mic
+      </button>
+      <input type="file" id="video-file-input" accept="video/*,.mp4,.mov,.webm">
+      <input type="file" id="audio-file-input" accept="audio/*,.mp3,.wav,.m4a,.ogg">
+    </div>
+
+    <!-- 1. MODULADORES DEL BEAT Y LA VELA (PRIMERA SECCIÓN) -->
+    <div class="section-title">
+      <span>Modulación Audioreactiva (Vela)</span>
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Sensibilidad Beat (Graves Ultrarrápidos)</span>
+        <span class="param-val" id="val-beat">1.8</span>
+      </div>
+      <input type="range" id="param-beat" min="0.5" max="4.0" step="0.1" value="1.8">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Profundidad Derretimiento (Melt)</span>
+        <span class="param-val" id="val-melt">1.9</span>
+      </div>
+      <input type="range" id="param-melt" min="0.3" max="4.0" step="0.1" value="1.9">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Velocidad de Reconstrucción</span>
+        <span class="param-val" id="val-reconstruct">0.07</span>
+      </div>
+      <input type="range" id="param-reconstruct" min="0.01" max="0.25" step="0.01" value="0.07">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Aberración Cromática (RGB Split en Golpe)</span>
+        <span class="param-val" id="val-chroma">1.5</span>
+      </div>
+      <input type="range" id="param-chroma" min="0.0" max="3.0" step="0.1" value="1.5">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Ondas de Calor / Refracción</span>
+        <span class="param-val" id="val-heat">1.3</span>
+      </div>
+      <input type="range" id="param-heat" min="0.0" max="3.0" step="0.1" value="1.3">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Chispas / Cenizas Flotantes</span>
+        <span class="param-val" id="val-sparks">60</span>
+      </div>
+      <input type="range" id="param-sparks" min="0" max="150" step="5" value="60">
+    </div>
+
+    <!-- 2. CLÍMAX & EXTINCIÓN FINAL (DEBAJO DE LOS MODULADORES) -->
+    <div class="section-title">
+      <span>Clímax & Extinción Final</span>
+      <span style="font-size: 0.58rem; color: #ff6666;" id="extinction-status-tag">Auto a los 164s</span>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-extinction" id="force-extinction-btn" title="Probar inmediatamente la extinción para ver el efecto">
+        🕯️ Extinguir Ahora
+      </button>
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Segundo de Extinción Final</span>
+        <span class="param-val" id="val-extinction-time">164 s</span>
+      </div>
+      <input type="range" id="param-extinction-time" min="10" max="175" step="1" value="164">
+    </div>
+
+    <!-- 3. ECOS ESPECTRALES DE LYRICS (DEBAJO DE LA EXTINCIÓN) -->
+    <div class="section-title">
+      <span>Ecos de Lyrics (Humo Espectral)</span>
+      <span style="font-size: 0.58rem; color: var(--gold);" id="spectral-tag">Activo</span>
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Intensidad Ecos Verticales</span>
+        <span class="param-val" id="val-spectral">1.1</span>
+      </div>
+      <input type="range" id="param-spectral" min="0.0" max="2.0" step="0.1" value="1.1">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label">
+        <span>Difuminación & Niebla (Humo)</span>
+        <span class="param-val" id="val-smoke-blur">1.2</span>
+      </div>
+      <input type="range" id="param-smoke-blur" min="0.2" max="2.5" step="0.1" value="1.2">
+    </div>
+
+    <!-- Acciones de Grabación y Vista -->
+    <div class="btn-row" style="margin-top: 10px;">
+      <button class="btn btn-rec" id="record-btn" title="Graba el video alterado directamente en formato MP4 9:16">
+        ⏺ Grabar Reel MP4
+      </button>
+      <button class="btn" id="toggle-view-btn" title="Alternar entre marco de teléfono y Pantalla Completa Atmosférica">
+        ⛶ Full Pantalla
+      </button>
+    </div>
+
+    <div style="font-size: 0.60rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
+      Tip: La barra inferior ahora es <strong>arrastrable</strong>. Presiona <strong>H</strong> para ocultar todo.
+    </div>
+  </div>
+
+  <div id="song-tag">
+    <div class="song-dot"></div>
+    <div id="song-tag-text">Canción: <strong>Camila Moreno — «Piedad» (Completa 2:57)</strong></div>
+  </div>
+
+  <script>
+    /**
+     * CRISOL VIVO — MOTOR AUDIOREACTIVO DE ALTA PRECISIÓN Y CANCIÓN COMPLETA
+     * 1. Audio Maestro: Canción completa de Camila Moreno (177s, 2:57 min).
+     * 2. Sincronización milimétrica de bajos (Attack instantáneo sin retardo).
+     * 3. Barra de timeline arrastrable para no tapar los lyrics del video.
+     * 4. Letras espectrales en humo vertical coordinadas con la canción completa.
+     * 5. Extinción final poética: colapso, apagado de llama y blanco y negro.
+     */
+
+    const glCanvas = document.getElementById('gl-canvas');
+    const partCanvas = document.getElementById('particles-canvas');
+    const gl = glCanvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: false });
+    const pctx = partCanvas.getContext('2d');
+    const viewport = document.getElementById('viewport');
+    const sourceVideo = document.getElementById('source-video');
+    const masterAudio = document.getElementById('master-audio');
+    const playerControls = document.getElementById('player-controls');
+    const dragHandle = document.getElementById('drag-handle');
+    const guidelinesOverlay = document.getElementById('guidelines-overlay');
+    const guideLeft = document.getElementById('guide-left');
+    const guideRight = document.getElementById('guide-right');
+    const guideTag = document.getElementById('guide-tag');
+    const aspectModeTag = document.getElementById('aspect-mode-tag');
+    const songTagText = document.getElementById('song-tag-text');
+    const extinctionMarker = document.getElementById('extinction-marker');
+    const loopModeBtn = document.getElementById('loop-mode-btn');
+
+    let audioCtx, analyser, audioSource, audioDataArray;
+    let isPlaying = false;
+    let isMic = false;
+    let videoTexture = null;
+
+    // Modo de duración: 'full' (canción completa 2:57) o 'video' (solo 60s)
+    let audioMode = 'full';
+
+    const state = {
+      beatSensitivity: 1.8,
+      meltDepth: 1.9,
+      reconstructionSpeed: 0.07,
+      chromaSplit: 1.5,
+      heatShimmer: 1.3,
+      sparksDensity: 60,
+      is916: true,
+      extinctionTime: 164.0,     // Segundo en que inicia la extinción final (hacia el clímax)
+      forceExtinction: false,
+      spectralIntensity: 1.1,
+      smokeBlur: 1.2
+    };
+
+    let currentBass = 0, currentMid = 0, currentTreble = 0;
+    let beatImpulse = 0;
+    let accumulatedMelt = 0;
+    let extinctionFactor = 0.0;
+
+    // LETRAS EXACTAS CON TIMINGS SINCRONIZADOS DE LA CANCIÓN COMPLETA (0 a 177s)
+    const lyricsData = [
+      { start: 7.0,   end: 12.8, text: "NO PENSÉ QUE PODÍA EXTRAÑAR" },
+      { start: 13.0,  end: 19.5, text: "ASÍ... CON ESPACIO" },
+      { start: 20.0,  end: 31.0, text: "ASÍ SONANDO... PIEDAD" },
+      { start: 32.0,  end: 36.8, text: "ME ESCAPÉ Y UN PEDAZO EN MÍ" },
+      { start: 37.0,  end: 42.5, text: "VOLVÍA SANGRANDO" },
+      { start: 43.0,  end: 55.0, text: "ASÍ SONANDO..." },
+      { start: 57.0,  end: 62.5, text: "COMPLETÉ UN PENSAMIENTO" },
+      { start: 63.0,  end: 69.5, text: "EN LOS JARDINES SECRETOS" },
+      { start: 70.0,  end: 79.0, text: "ESTOY EN EL BARRO BAILANDO" },
+      { start: 80.0,  end: 84.5, text: "YO JAMÁS TE HICE CASO" },
+      { start: 85.0,  end: 88.5, text: "AHORA ESCUCHA" },
+      { start: 89.0,  end: 94.5, text: "EL CANAL DE MI CABEZA" },
+      { start: 95.0,  end: 103.0, text: "EL CHANCHO FLOTANDO..." },
+      { start: 104.0, end: 106.8, text: "COMPETIMOS NADANDO" },
+      { start: 107.0, end: 115.0, text: "DETRÁS CON DESEOS VALIENTES" },
+      { start: 116.0, end: 126.0, text: "SE FUE... SE FUE..." },
+      { start: 128.0, end: 134.0, text: "COMPLETÉ UN PENSAMIENTO" },
+      { start: 135.0, end: 141.0, text: "EN LOS JARDINES SECRETOS" },
+      { start: 142.0, end: 151.0, text: "ESTOY EN EL BARRO BAILANDO" },
+      { start: 152.0, end: 158.0, text: "COMPETIMOS NADANDO" },
+      { start: 159.0, end: 164.0, text: "CON DESEOS VALIENTES" },
+      { start: 164.5, end: 172.0, text: "¡VOLVIÓ!... ¡VOLVIÓ!" },
+      { start: 172.5, end: 177.0, text: "PIEDAD..." }
+    ];
+
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let recCanvas = null;
+    let recCtx = null;
+
+    // --- SHADER WEBGL ---
+    const vsSource = `
+      attribute vec2 a_position;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = (a_position + 1.0) * 0.5;
+        v_uv.y = 1.0 - v_uv.y;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `;
+
+    const fsSource = `
+      precision mediump float;
+      uniform sampler2D u_video;
+      uniform vec2 u_resolution;
+      uniform float u_video_aspect;
+      uniform float u_time;
+      uniform float u_bass;
+      uniform float u_mid;
+      uniform float u_treble;
+      uniform float u_beat;
+      uniform float u_melt;
+      uniform float u_chroma;
+      uniform float u_extinction;
+      varying vec2 v_uv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
+                   mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
+      }
+
+      void main() {
+        vec2 screenUV = v_uv;
+        float screenAspect = u_resolution.x / u_resolution.y;
+        float videoAspect = (u_video_aspect > 0.01) ? u_video_aspect : (9.0 / 16.0);
+
+        vec2 videoScale;
+        if (screenAspect > videoAspect) {
+          videoScale = vec2(videoAspect / screenAspect, 1.0);
+        } else {
+          videoScale = vec2(1.0, screenAspect / videoAspect);
+        }
+
+        vec2 videoUV = (screenUV - 0.5) / videoScale + 0.5;
+
+        // 1. ATMÓSFERA Y FONDO EXPANSIVO
+        vec2 flameScreenPos = vec2(0.5, 0.45);
+        float distToFlame = length((screenUV - flameScreenPos) * vec2(screenAspect, 1.0));
+        
+        float smoke = noise(screenUV * 5.0 + vec2(0.0, -u_time * 0.12)) * 0.035;
+        float glowFade = 1.0 - smoothstep(0.1, 0.85, u_extinction);
+        vec3 ambientGlow = vec3(0.95, 0.48, 0.14) * (0.05 + u_bass * 0.22 + u_beat * 0.35) * glowFade / (distToFlame * 3.0 + 0.65);
+        vec3 bgColor = vec3(0.022, 0.021, 0.028) + smoke + ambientGlow;
+
+        float vig = length(screenUV - 0.5);
+        bgColor *= clamp(1.4 - vig * 0.85, 0.0, 1.0);
+
+        // 2. ALTERACIÓN Y LICUEFACCIÓN SIMULTÁNEA
+        float flameDist = length((videoUV - vec2(0.505, 0.45)) * vec2(2.5, 1.3));
+        float flameFactor = smoothstep(0.48, 0.04, flameDist);
+        float heatWave = sin(videoUV.y * 45.0 - u_time * 20.0) * cos(videoUV.x * 32.0 + u_time * 14.0);
+        
+        vec2 heatOffset = vec2(
+          heatWave * 0.015 * u_mid * flameFactor * glowFade,
+          sin(u_time * 26.0) * 0.010 * u_treble * flameFactor * glowFade
+        );
+
+        float waxMask = smoothstep(0.47, 0.60, videoUV.y) * (1.0 - smoothstep(0.88, 0.98, videoUV.y));
+        float waxCenter = smoothstep(0.28, 0.04, abs(videoUV.x - 0.505));
+        float waxInfluence = waxMask * waxCenter;
+
+        float dripNoise = noise(vec2(videoUV.x * 22.0, u_time * 0.6));
+        float microDrip = noise(vec2(videoUV.x * 50.0, videoUV.y * 12.0));
+        
+        // GOLPE DIRECTO E INSTANTÁNEO EN EL BEAT + DERRETIMIENTO
+        float beatKick = u_beat * 0.85 + u_bass * 0.65;
+        float totalMelt = (u_melt * 0.75 + beatKick * 0.55) + u_extinction * 3.6;
+        float meltDisplacement = (dripNoise * 0.68 + microDrip * 0.32) * totalMelt * 0.19 * waxInfluence;
+        
+        float basePooling = smoothstep(0.65, 0.92, videoUV.y) * totalMelt * 0.09;
+        float xOffset = (videoUV.x - 0.505) * basePooling;
+
+        vec2 deformedUV = videoUV;
+        deformedUV.y -= meltDisplacement;
+        deformedUV.x -= xOffset;
+        deformedUV += heatOffset;
+
+        float chromatic = (u_beat * 0.022 + u_bass * 0.012) * u_chroma * (waxInfluence * 0.8 + 0.2) * glowFade;
+
+        vec2 clampedUV = clamp(deformedUV, vec2(0.002), vec2(0.998));
+        vec4 colR = texture2D(u_video, clamp(deformedUV + vec2(chromatic, 0.0), vec2(0.002), vec2(0.998)));
+        vec4 colG = texture2D(u_video, clampedUV);
+        vec4 colB = texture2D(u_video, clamp(deformedUV - vec2(chromatic, 0.0), vec2(0.002), vec2(0.998)));
+        vec4 videoColor = vec4(colR.r, colG.g, colB.b, 1.0);
+
+        // 3. APAGADO Y EXTINCIÓN DE LA LLAMA
+        float flickerDead = 1.0 + sin(u_time * 45.0) * u_extinction * 0.6;
+        float flameAlive = (1.0 - smoothstep(0.1, 0.75, u_extinction)) * flickerDead;
+        float flameCore = smoothstep(0.22, 0.0, flameDist) * max(0.0, flameAlive);
+
+        vec3 glowColor = vec3(1.0, 0.58, 0.16) * (u_bass * 0.60 + u_beat * 0.90) * flameCore;
+        videoColor.rgb += glowColor;
+        videoColor.rgb *= (1.0 + u_bass * 0.25 * glowFade);
+
+        float smokePuff = smoothstep(0.3, 0.9, u_extinction) * smoothstep(0.35, 0.0, flameDist);
+        videoColor.rgb = mix(videoColor.rgb, videoColor.rgb * 0.18, smokePuff);
+
+        // 4. TRANSICIÓN A BLANCO Y NEGRO
+        float luma = dot(videoColor.rgb, vec3(0.299, 0.587, 0.114));
+        vec3 monoVideo = vec3(pow(luma, 1.25));
+        videoColor.rgb = mix(videoColor.rgb, monoVideo, u_extinction);
+
+        float bgLuma = dot(bgColor, vec3(0.299, 0.587, 0.114));
+        bgColor = mix(bgColor, vec3(bgLuma), u_extinction);
+
+        float edgeBlend = smoothstep(0.0, 0.04, videoUV.x) * (1.0 - smoothstep(0.96, 1.0, videoUV.x))
+                        * smoothstep(0.0, 0.02, videoUV.y) * (1.0 - smoothstep(0.98, 1.0, videoUV.y));
+
+        vec3 finalColor = mix(bgColor, videoColor.rgb, edgeBlend);
+
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    function createShader(gl, type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(s));
+        gl.deleteShader(s);
+        return null;
+      }
+      return s;
+    }
+
+    const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+    const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+
+    const posBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1,
+    ]), gl.STATIC_DRAW);
+
+    const aPos = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uVideoAspect = gl.getUniformLocation(program, 'u_video_aspect');
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uBass = gl.getUniformLocation(program, 'u_bass');
+    const uMid = gl.getUniformLocation(program, 'u_mid');
+    const uTreble = gl.getUniformLocation(program, 'u_treble');
+    const uBeat = gl.getUniformLocation(program, 'u_beat');
+    const uMelt = gl.getUniformLocation(program, 'u_melt');
+    const uChroma = gl.getUniformLocation(program, 'u_chroma');
+    const uExtinction = gl.getUniformLocation(program, 'u_extinction');
+
+    videoTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    // Textura inicial predeterminada cálida para evitar cualquier pantalla negra
+    const initPix = new Uint8Array([35, 20, 22, 255]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, initPix);
+
+    const placeholderImg = new Image();
+    placeholderImg.onload = () => {
+      try {
+        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, placeholderImg);
+      } catch (err) {
+        console.warn('Placeholder texture warning:', err);
+      }
+    };
+    if (window.CANDLE_BASE64) {
+      placeholderImg.src = window.CANDLE_BASE64;
+    } else {
+      placeholderImg.src = 'frame_20s.jpg';
+    }
+
+    // Helper para decodificar Base64 a Blob en memoria (sin restricciones de CORS o file://)
+    function b64toBlob(b64Data, contentType) {
+      contentType = contentType || '';
+      const sliceSize = 1024;
+      const byteCharacters = atob(b64Data);
+      const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        const slice = byteCharacters.slice(offset, offset + sliceSize);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        byteArrays.push(new Uint8Array(byteNumbers));
+      }
+      return new Blob(byteArrays, { type: contentType });
+    }
+
+    let isPiedadTrack = true; // Rastrea si la pista actual es Piedad o contenido personalizado
+
+    // Carga de video y audio maestro sin restricciones
+    sourceVideo.src = 'vela.mp4';
+    sourceVideo.load();
+
+    if (window.SONG_PIEDAD_BASE64) {
+      try {
+        const songBlob = b64toBlob(window.SONG_PIEDAD_BASE64, 'audio/mp3');
+        masterAudio.src = URL.createObjectURL(songBlob);
+        masterAudio.load();
+        console.log('Canción Piedad cargada como Blob local (177s / 2:57 min garantizados)');
+      } catch (err) {
+        console.warn('Fallback a cancion_piedad.mp3:', err);
+        masterAudio.src = 'cancion_piedad.mp3';
+        masterAudio.load();
+      }
+    } else {
+      masterAudio.src = 'cancion_piedad.mp3';
+      masterAudio.load();
+    }
+
+    // --- MOTOR DE AUDIO AUDIOREACTIVO Y MULTI-FUENTE ---
+    let masterAudioNode = null;
+    let videoAudioNode = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024; // Resolución espectral precisa
+        analyser.smoothingTimeConstant = 0.25; // Respuesta inmediata
+        audioDataArray = new Uint8Array(analyser.frequencyBinCount);
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
+      if (!masterAudioNode && masterAudio) {
+        try {
+          masterAudioNode = audioCtx.createMediaElementSource(masterAudio);
+          masterAudioNode.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          console.log('masterAudio conectado a analizador y salida de audio');
+        } catch (e) {
+          console.warn('Conexión diferida masterAudio:', e);
+        }
+      }
+    }
+
+    function connectVideoAudioNode() {
+      if (!audioCtx) return;
+      if (!videoAudioNode && sourceVideo) {
+        try {
+          videoAudioNode = audioCtx.createMediaElementSource(sourceVideo);
+          videoAudioNode.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          console.log('videoAudioNode conectado al analizador y altavoces');
+        } catch (e) {
+          console.warn('Conexión videoAudioNode diferida:', e);
+        }
+      }
+    }
+
+    let prevBass = 0;
+    let bassHistory = [];
+
+    function updateAudioAnalysis() {
+      if (!analyser) return;
+      analyser.getByteFrequencyData(audioDataArray);
+
+      // Frecuencias graves y bombo (Bins 1 a 5: ~43Hz a 215Hz)
+      let bSum = 0;
+      for (let i = 1; i <= 5; i++) {
+        let weight = (i >= 2 && i <= 3) ? 1.4 : 1.0;
+        bSum += audioDataArray[i] * weight;
+      }
+      let rawBass = (bSum / (5 * 1.15)) / 255.0;
+
+      // Medios (Voces Camila Moreno: Bins 8 a 45: ~340Hz a 1900Hz)
+      let mSum = 0;
+      for (let i = 8; i <= 45; i++) mSum += audioDataArray[i];
+      let rawMid = (mSum / 38) / 255.0;
+
+      // Agudos (Bins 50 a 160: ~2100Hz a 6800Hz)
+      let tSum = 0;
+      for (let i = 50; i <= 160; i++) tSum += audioDataArray[i];
+      let rawTreble = (tSum / 111) / 255.0;
+
+      // ATAQUE INSTANTÁNEO EN EL BAJO: si el sonido sube, responde SIN NINGÚN RETARDO
+      if (rawBass > currentBass) {
+        currentBass = rawBass; // Salto instantáneo en el golpe
+      } else {
+        currentBass += (rawBass - currentBass) * 0.30; // Decaimiento suave
+      }
+
+      currentMid += (rawMid - currentMid) * 0.28;
+      currentTreble += (rawTreble - currentTreble) * 0.35;
+
+      // DETECCIÓN DINÁMICA DE BEAT POR TRANSITORIOS (Flux)
+      let delta = rawBass - prevBass;
+      if (delta > 0.08 && rawBass > 0.28) {
+        beatImpulse = 1.0; // ¡GOLPE DE BEAT!
+      }
+      prevBass = rawBass;
+      beatImpulse *= 0.82; // Caída rápida para percusión seca
+    }
+
+    // --- DINÁMICA DE EXTINCIÓN Y DERRETIMIENTO ---
+    function updateMeltAndExtinction() {
+      const curTime = masterAudio.currentTime;
+      const totalDur = masterAudio.duration || 177.08;
+
+      let targetExtinction = 0.0;
+      if (state.forceExtinction) {
+        targetExtinction = 1.0;
+      } else if (curTime >= state.extinctionTime && totalDur > 0) {
+        const progress = (curTime - state.extinctionTime) / Math.max(3.0, totalDur - state.extinctionTime);
+        targetExtinction = Math.min(1.0, Math.max(0.0, progress));
+      }
+
+      extinctionFactor += (targetExtinction - extinctionFactor) * 0.08;
+
+      // Derretimiento reactivo simultáneo al beat
+      const meltTrigger = (beatImpulse * 0.90 + currentBass * 0.60) * state.beatSensitivity;
+      if (meltTrigger > 0.20) {
+        accumulatedMelt += meltTrigger * state.meltDepth * 0.095;
+      }
+      accumulatedMelt = Math.min(2.8, accumulatedMelt);
+      accumulatedMelt -= accumulatedMelt * state.reconstructionSpeed;
+      if (accumulatedMelt < 0.001) accumulatedMelt = 0;
+    }
+
+    // --- PARTÍCULAS / CHISPAS Y CENIZAS ---
+    class Particle {
+      constructor(w, h) { this.reset(w, h, true); }
+      reset(w, h, randomY = false) {
+        const screenAspect = w / h;
+        const videoAspect = (sourceVideo.videoWidth && sourceVideo.videoHeight) ? 
+                            (sourceVideo.videoWidth / sourceVideo.videoHeight) : (9.0 / 16.0);
+        let videoBoxWidth = (screenAspect > videoAspect) ? (videoAspect / screenAspect) * w : w;
+
+        this.x = (w * 0.505) + (Math.random() - 0.5) * (videoBoxWidth * 0.16);
+        this.y = randomY ? h * (0.28 + Math.random() * 0.35) : h * 0.45 + (Math.random() - 0.5) * 20;
+        this.vx = (Math.random() - 0.5) * 3.4;
+        this.vy = -1.4 - Math.random() * 3.6;
+        this.size = Math.random() * 3.2 + 2.0; // Chispas más visibles
+        this.alpha = Math.random() * 0.85 + 0.30;
+        this.life = 0;
+        this.maxLife = 70 + Math.random() * 100;
+        this.hue = 24 + Math.random() * 26;
+      }
+
+      update(w, h, bass, beat) {
+        this.x += this.vx + Math.sin(this.life * 0.06 + this.y * 0.01) * 1.6;
+        const speedMult = mix(1.0 + beat * 2.2 + bass * 0.8, 0.4, extinctionFactor);
+        this.y += this.vy * speedMult;
+        this.life++;
+        this.alpha *= 0.985;
+        if (this.life >= this.maxLife || this.y < 0 || this.alpha < 0.02 || this.x < 0 || this.x > w) {
+          this.reset(w, h);
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        if (extinctionFactor > 0.05) {
+          const luma = Math.round(mix(65, 85, Math.random()));
+          ctx.fillStyle = `hsla(0, 0%, ${luma}%, ${1.0 - extinctionFactor * 0.3})`;
+          ctx.shadowColor = `rgba(180, 180, 180, ${0.4 * (1.0 - extinctionFactor * 0.5)})`;
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.fillStyle = `hsl(${this.hue}, 100%, 68%)`;
+          ctx.shadowColor = `hsl(${this.hue - 10}, 100%, 55%)`;
+          ctx.shadowBlur = 12;
+        }
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function mix(a, b, t) { return a * (1 - t) + b * t; }
+
+    let particles = [];
+    function initParticles(count) {
+      particles = [];
+      const w = partCanvas.width;
+      const h = partCanvas.height;
+      for (let i = 0; i < count; i++) particles.push(new Particle(w, h));
+    }
+
+    // --- ECOS ESPECTRALES DE LYRICS EN HUMO VERTICAL ---
+    function renderSpectralLyrics(ctx, w, h, time) {
+      if (!isPiedadTrack || state.is916 || state.spectralIntensity <= 0.01) return;
+
+      const screenAspect = w / h;
+      const videoAspect = (sourceVideo.videoWidth && sourceVideo.videoHeight) ? 
+                          (sourceVideo.videoWidth / sourceVideo.videoHeight) : (9.0 / 16.0);
+      const videoBoxW = (screenAspect > videoAspect) ? (videoAspect / screenAspect) * w : w;
+      
+      const leftMarginWidth = (w - videoBoxW) / 2;
+      const rightMarginStartX = (w + videoBoxW) / 2;
+      if (leftMarginWidth < 60) return;
+
+      const curTime = (audioMode === 'full') ? masterAudio.currentTime : sourceVideo.currentTime;
+      let activeIdx = lyricsData.findIndex(l => curTime >= l.start && curTime <= l.end);
+      
+      if (activeIdx === -1 && curTime > 0) {
+        for (let i = lyricsData.length - 1; i >= 0; i--) {
+          if (curTime >= lyricsData[i].start) { activeIdx = i; break; }
+        }
+      }
+      if (activeIdx === -1) return;
+
+      const currentLyric = lyricsData[activeIdx];
+      const prevLyric = (activeIdx > 0) ? lyricsData[activeIdx - 1] : null;
+
+      const vocalPulse = 0.5 + currentMid * 0.8;
+      const fadeWithExtinction = Math.max(0.0, 1.0 - extinctionFactor * 0.85);
+      const baseAlpha = 0.55 * state.spectralIntensity * vocalPulse * fadeWithExtinction;
+
+      if (prevLyric) {
+        const leftX = leftMarginWidth * 0.52;
+        drawVerticalSmokyText(ctx, prevLyric.text, leftX, h, time, baseAlpha * 0.45, -1);
+      }
+      if (currentLyric) {
+        const rightX = rightMarginStartX + (w - rightMarginStartX) * 0.48;
+        drawVerticalSmokyText(ctx, currentLyric.text, rightX, h, time + 2.5, baseAlpha, 1);
+      }
+    }
+
+    function drawVerticalSmokyText(ctx, text, centerX, h, time, alpha, side) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      const chars = text.split('');
+      const charCount = chars.length;
+      
+      const fontSize = Math.max(13, Math.min(22, Math.floor(h / (charCount * 1.55))));
+      ctx.font = `600 ${fontSize}px 'Cinzel', serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const totalHeight = charCount * fontSize * 1.45;
+      const startY = (h - totalHeight) / 2 + Math.sin(time * 0.6) * 15;
+
+      let smokeColor, blurColor;
+      if (extinctionFactor > 0.2) {
+        smokeColor = `rgba(220, 220, 230, ${alpha * 0.85})`;
+        blurColor = `rgba(180, 185, 200, ${alpha * 0.6})`;
+      } else {
+        smokeColor = `rgba(255, 235, 200, ${alpha})`;
+        blurColor = `rgba(255, 140, 40, ${alpha * 0.8})`;
+      }
+
+      ctx.shadowColor = blurColor;
+      ctx.shadowBlur = Math.round(28 * state.smokeBlur * (1.0 + currentMid));
+      ctx.fillStyle = smokeColor;
+
+      for (let i = 0; i < charCount; i++) {
+        const char = chars[i];
+        if (char === ' ') continue;
+        const waveX = Math.sin(time * 1.4 + i * 0.4) * 8.0 * state.smokeBlur;
+        const waveY = Math.cos(time * 1.1 + i * 0.3) * 4.0;
+        const posX = centerX + waveX;
+        const posY = startY + i * fontSize * 1.45 + waveY;
+
+        ctx.save();
+        ctx.translate(posX, posY);
+        ctx.rotate(Math.sin(time * 0.8 + i * 0.5) * 0.06);
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      }
+
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+      for (let i = 0; i < charCount; i++) {
+        const char = chars[i];
+        if (char === ' ') continue;
+        const waveX = Math.sin(time * 1.4 + i * 0.4) * 8.0 * state.smokeBlur;
+        const waveY = Math.cos(time * 1.1 + i * 0.3) * 4.0;
+        ctx.fillText(char, centerX + waveX, startY + i * fontSize * 1.45 + waveY);
+      }
+      ctx.restore();
+    }
+
+    // --- SINCRONIZACIÓN DE VIDEO CON AUDIO DE CANCIÓN COMPLETA ---
+    function syncVideoWithAudio() {
+      if (isPlaying && audioMode === 'full') {
+        // En modo 'full' (canción completa), la canción guía el tiempo (0 a 177s)
+        if (masterAudio.paused) {
+          masterAudio.play().catch(() => {});
+        }
+        if (sourceVideo.paused) {
+          sourceVideo.play().catch(() => {});
+        }
+
+        // Bucle continuo suave del video a lo largo de la canción sin saltos bruscos
+        if (sourceVideo.duration > 0 && !sourceVideo.seeking) {
+          const targetTime = masterAudio.currentTime % sourceVideo.duration;
+          if (Math.abs(sourceVideo.currentTime - targetTime) > 0.8) {
+            sourceVideo.currentTime = targetTime;
+          }
+        }
+      }
+    }
+
+    sourceVideo.addEventListener('ended', () => {
+      if (isPlaying) {
+        sourceVideo.currentTime = 0;
+        sourceVideo.play().catch(() => {});
+      }
+    });
+
+    masterAudio.addEventListener('ended', () => {
+      pausePlayback();
+      masterAudio.currentTime = 0;
+      sourceVideo.currentTime = 0;
+      updateTimeline();
+    });
+
+    // --- PALABRA 'PIEDAD' TRASLÚCIDA Y AUDIOREACTIVA AL BEAT (FONDO TRASERO) ---
+    let piedadIntensity = 0.0;
+    let piedadLastBeatTime = 0;
+
+    function renderPiedadBackdrop(ctx, w, h, time) {
+      // EL TIEMPO SE RIGE ESTRICTAMENTE POR EL AUDIO DE LA CANCIÓN CHILENA (0 a 177s)
+      // NUNCA por las repeticiones del bucle del video
+      // Si no es la pista Piedad ni extinción forzada, no mostrar la palabra
+      if (!isPiedadTrack && !state.forceExtinction) {
+        piedadIntensity = 0.0;
+        return;
+      }
+
+      const songAudioTime = (audioMode === 'full') ? masterAudio.currentTime : sourceVideo.currentTime;
+
+      // Camila Moreno canta "PIEDAD" ÚNICAMENTE en estos dos momentos del audio:
+      // 1. Primer coro: segundo 25.8 a 30.6
+      // 2. Clímax final: segundo 172.3 a 176.6
+      const isPiedadInSong = (songAudioTime >= 25.8 && songAudioTime <= 30.6) ||
+                             (songAudioTime >= 172.3 && songAudioTime <= 176.6) ||
+                             (state.forceExtinction && extinctionFactor > 0.08);
+
+      // Si la canción NO está en esos segundos exactos, NO puede aparecer jamás
+      if (!isPiedadInSong) {
+        piedadIntensity = 0.0;
+        return;
+      }
+
+      // DENTRO del momento en que la voz canta "PIEDAD", reacciona a los beats del audio
+      if ((songAudioTime >= 25.8 && songAudioTime <= 26.25 && piedadIntensity < 0.35) ||
+          (songAudioTime >= 172.3 && songAudioTime <= 172.75 && piedadIntensity < 0.35)) {
+        piedadIntensity = 1.0;
+        piedadLastBeatTime = time;
+      } else if (beatImpulse > 0.28 || (currentBass > 0.48 && (time - piedadLastBeatTime) > 0.35)) {
+        piedadIntensity = 1.0;
+        piedadLastBeatTime = time;
+      }
+
+      // Desaparición progresiva en ~1 segundo (esfumándose y encogiéndose)
+      piedadIntensity *= 0.942;
+      if (piedadIntensity < 0.005) {
+        piedadIntensity = 0;
+        return;
+      }
+
+      ctx.save();
+
+      // Centro del encuadre en el fondo
+      const cx = w * 0.5;
+      const cy = h * 0.48;
+      ctx.translate(cx, cy);
+
+      // ENCOGIÉNDOSE: Aparece en grande (escala ~1.28) y se va encogiendo hacia (~0.76)
+      const currentScale = 0.76 + (piedadIntensity * 0.52);
+      ctx.scale(currentScale, currentScale);
+
+      // ESFUMÁNDOSE: Ascenso suave como vapor/humo mientras se desvanece
+      const smokeDriftY = (1.0 - piedadIntensity) * -16;
+      ctx.translate(0, smokeDriftY);
+
+      // AJUSTE PERFECTO A FORMATO 9:16 (garantiza lectura completa y márgenes limpios)
+      const maxAllowedWidth = w * 0.72; // Ocupa máximo el 72% del ancho para no cortarse nunca
+      let fontSize = Math.round(w * 0.165);
+      ctx.font = `900 ${fontSize}px 'Cinzel', 'Space Grotesk', serif`;
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = '0.08em';
+      }
+      let measuredWidth = ctx.measureText("PIEDAD").width;
+      if (measuredWidth > maxAllowedWidth) {
+        fontSize = Math.floor(fontSize * (maxAllowedWidth / measuredWidth));
+        ctx.font = `900 ${fontSize}px 'Cinzel', 'Space Grotesk', serif`;
+      }
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Modo 'screen' para fusionarse armónicamente en el fondo sin opacar la vela
+      ctx.globalCompositeOperation = 'screen';
+
+      const maxAlpha = 0.30; // Traslúcida y elegante
+      const alpha = Math.pow(piedadIntensity, 1.25) * maxAlpha;
+
+      // Resplandor cálido difuminado que se expande como humo al disolverse
+      const smokeBlur = 18 + ((1.0 - piedadIntensity) * 42 * state.smokeBlur);
+      ctx.shadowColor = `rgba(255, 145, 50, ${alpha * 0.85})`;
+      ctx.shadowBlur = smokeBlur;
+
+      // Capas de humo difuso que se dispersan hacia los costados al esfumarse
+      if (piedadIntensity < 0.88) {
+        const spread = (1.0 - piedadIntensity) * 4.5;
+        ctx.fillStyle = `rgba(245, 205, 160, ${alpha * 0.22})`;
+        ctx.fillText("PIEDAD", -spread, -spread * 0.4);
+        ctx.fillText("PIEDAD", spread, spread * 0.4);
+      }
+
+      // Aberración cromática sutil que vibra en el impacto inicial
+      if (state.chromaSplit > 0.2 && piedadIntensity > 0.2) {
+        const offset = state.chromaSplit * 3.2 * piedadIntensity;
+        ctx.fillStyle = `rgba(255, 60, 20, ${alpha * 0.42})`;
+        ctx.fillText("PIEDAD", -offset, 0);
+        ctx.fillStyle = `rgba(70, 210, 255, ${alpha * 0.32})`;
+        ctx.fillText("PIEDAD", offset, 0);
+      }
+
+      // Capa base principal: dorado hueso traslúcido
+      ctx.fillStyle = `rgba(252, 235, 205, ${alpha})`;
+      ctx.fillText("PIEDAD", 0, 0);
+
+      // Trazo sutil para definir la tipografía gruesa
+      ctx.lineWidth = Math.max(1.8, fontSize * 0.022);
+      ctx.strokeStyle = `rgba(255, 175, 75, ${alpha * 0.68})`;
+      ctx.strokeText("PIEDAD", 0, 0);
+
+      ctx.restore();
+    }
+
+    // --- BUCLE PRINCIPAL DE RENDER ---
+    let startTime = performance.now();
+
+    function render() {
+      const now = performance.now();
+      const time = (now - startTime) * 0.001;
+
+      updateAudioAnalysis();
+      updateMeltAndExtinction();
+      syncVideoWithAudio();
+
+      if (sourceVideo && sourceVideo.readyState >= sourceVideo.HAVE_CURRENT_DATA) {
+        try {
+          gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceVideo);
+        } catch (texErr) {
+          // Captura silenciosa de restricciones CORS de navegadores para nunca congelar el render
+        }
+      }
+
+      gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+      gl.useProgram(program);
+
+      let currentAspect = 9.0 / 16.0;
+      if (sourceVideo.videoWidth && sourceVideo.videoHeight) {
+        currentAspect = sourceVideo.videoWidth / sourceVideo.videoHeight;
+      }
+
+      gl.uniform2f(uRes, glCanvas.width, glCanvas.height);
+      gl.uniform1f(uVideoAspect, currentAspect);
+      gl.uniform1f(uTime, time);
+      // Efectos audioreactivos y de Sketch vivos desde el primer instante
+      const baseHeat = 0.20;
+      const baseMelt = 0.12;
+      gl.uniform1f(uBass, Math.max(0.08, currentBass * state.beatSensitivity));
+      gl.uniform1f(uMid, (currentMid + baseHeat) * state.heatShimmer);
+      gl.uniform1f(uTreble, currentTreble);
+      // Alteración y reactividad reforzada al decir 'PIEDAD'
+      const piedadWarp = piedadIntensity * 0.38;
+      gl.uniform1f(uBeat, Math.min(1.0, beatImpulse + piedadWarp));
+      gl.uniform1f(uMelt, accumulatedMelt + baseMelt + piedadWarp * 0.25);
+      gl.uniform1f(uChroma, state.chromaSplit * (0.25 + (beatImpulse + currentBass) * 0.75 + piedadWarp * 0.65));
+      gl.uniform1f(uExtinction, extinctionFactor);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+      gl.uniform1i(gl.getUniformLocation(program, 'u_video'), 0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      pctx.clearRect(0, 0, partCanvas.width, partCanvas.height);
+      const pw = partCanvas.width;
+      const ph = partCanvas.height;
+
+      // 1. Palabra PIEDAD monumental y traslúcida en el fondo trasero
+      renderPiedadBackdrop(pctx, pw, ph, time);
+
+      // 2. Chispas y cenizas flotando sobre la palabra y la vela
+      for (let p of particles) {
+        p.update(pw, ph, currentBass, beatImpulse);
+        p.draw(pctx);
+      }
+
+      renderSpectralLyrics(pctx, pw, ph, time);
+
+      // Composición para grabación: incluye shader WebGL + palabra PIEDAD + chispas + lyrics
+      if (isRecording && recCanvas && recCtx) {
+        recCtx.clearRect(0, 0, recCanvas.width, recCanvas.height);
+        recCtx.drawImage(glCanvas, 0, 0);
+        recCtx.drawImage(partCanvas, 0, 0);
+      }
+
+      updateHUD();
+      updateTimeline();
+
+      requestAnimationFrame(render);
+    }
+
+    // --- HUD Y TIMELINE ---
+    const meterBass = document.getElementById('meter-bass');
+    const meterMid = document.getElementById('meter-mid');
+    const meterTreble = document.getElementById('meter-treble');
+    const meterMelt = document.getElementById('meter-melt');
+    const beatIndicator = document.getElementById('beat-indicator');
+    const timeDisplay = document.getElementById('time-display');
+    const timelineProgress = document.getElementById('timeline-progress');
+    const extinctionStatusTag = document.getElementById('extinction-status-tag');
+
+    function updateHUD() {
+      meterBass.style.height = `${Math.min(100, currentBass * 100)}%`;
+      meterMid.style.height = `${Math.min(100, currentMid * 100)}%`;
+      meterTreble.style.height = `${Math.min(100, currentTreble * 100)}%`;
+      meterMelt.style.height = `${Math.min(100, ((accumulatedMelt + extinctionFactor * 2.8) / 3.5) * 100)}%`;
+
+      if (beatImpulse > 0.35) beatIndicator.classList.add('active');
+      else beatIndicator.classList.remove('active');
+
+      if (extinctionFactor > 0.05) {
+        extinctionStatusTag.textContent = `Extinguiendo (${Math.round(extinctionFactor * 100)}%)`;
+        extinctionStatusTag.style.color = '#ff3333';
+      } else {
+        extinctionStatusTag.textContent = `Auto a los ${Math.round(state.extinctionTime)}s`;
+        extinctionStatusTag.style.color = '#ff8888';
+      }
+    }
+
+    function formatTime(sec) {
+      if (isNaN(sec)) return '00:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateTimeline() {
+      const cur = masterAudio.currentTime;
+      const dur = masterAudio.duration || 177.08; // Siempre la duración de la canción chilena (2:57 min)
+
+      if (dur > 0) {
+        const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
+        timelineProgress.style.width = `${pct}%`;
+        timeDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+
+        const extPct = (state.extinctionTime / dur) * 100;
+        extinctionMarker.style.left = `${Math.min(100, extPct)}%`;
+      }
+    }
+
+    const timeline = document.getElementById('timeline');
+    timeline.addEventListener('click', (e) => {
+      const rect = timeline.getBoundingClientRect();
+      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dur = masterAudio.duration || 177.08;
+      masterAudio.currentTime = pos * dur;
+      if (sourceVideo.duration > 0) {
+        sourceVideo.currentTime = masterAudio.currentTime % sourceVideo.duration;
+      }
+      updateTimeline();
+    });
+
+    // --- ARRASTRAR LA BARRA DE TIMELINE (DRAG & DROP DE LA BARRA) ---
+    let isDraggingBar = false;
+    let dragStartX = 0, dragStartY = 0;
+    let initialBarLeft = 0, initialBarTop = 0;
+
+    playerControls.addEventListener('mousedown', (e) => {
+      // No iniciar arrastre si se hace clic en botones o la barra de progreso
+      if (e.target.closest('button') || e.target.closest('.timeline-container')) return;
+      isDraggingBar = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      const rect = playerControls.getBoundingClientRect();
+      initialBarLeft = rect.left;
+      initialBarTop = rect.top;
+
+      playerControls.style.left = `${initialBarLeft}px`;
+      playerControls.style.top = `${initialBarTop}px`;
+      playerControls.style.bottom = 'auto';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDraggingBar) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      playerControls.style.left = `${Math.max(10, Math.min(window.innerWidth - 370, initialBarLeft + dx))}px`;
+      playerControls.style.top = `${Math.max(10, Math.min(window.innerHeight - 80, initialBarTop + dy))}px`;
+    });
+
+    window.addEventListener('mouseup', () => { isDraggingBar = false; });
+
+    // --- RESIZE Y GUÍAS ---
+    function resizeCanvases() {
+      const rect = viewport.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const targetW = Math.round(rect.width * dpr);
+      const targetH = Math.round(rect.height * dpr);
+
+      if (glCanvas.width !== targetW || glCanvas.height !== targetH) {
+        glCanvas.width = targetW;
+        glCanvas.height = targetH;
+        partCanvas.width = targetW;
+        partCanvas.height = targetH;
+        initParticles(state.sparksDensity);
+      }
+
+      if (!state.is916) {
+        const screenW = rect.width;
+        const screenH = rect.height;
+        const vAspect = (sourceVideo.videoWidth && sourceVideo.videoHeight) ? 
+                        (sourceVideo.videoWidth / sourceVideo.videoHeight) : (9.0 / 16.0);
+        const videoBoxW = vAspect * screenH;
+        const leftX = (screenW - videoBoxW) / 2;
+        const rightX = leftX + videoBoxW;
+
+        guideLeft.style.left = `${leftX}px`;
+        guideRight.style.left = `${rightX}px`;
+        if (guideTag) guideTag.style.display = 'none';
+      }
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // --- REPRODUCCIÓN Y CONTROLES ---
+    const mainPlayBtn = document.getElementById('main-play-btn');
+    const mainPlayIcon = document.getElementById('main-play-icon');
+    const mainPlayText = document.getElementById('main-play-text');
+    const videoPlayBtn = document.getElementById('video-play-btn');
+    const videoMuteBtn = document.getElementById('video-mute-btn');
+    const uploadVideoBtn = document.getElementById('upload-video-btn');
+    const uploadAudioBtn = document.getElementById('upload-audio-btn');
+    const videoFileInput = document.getElementById('video-file-input');
+    const audioFileInput = document.getElementById('audio-file-input');
+    const micBtn = document.getElementById('mic-btn');
+    const sourceBadge = document.getElementById('source-badge');
+
+    function setPlayButtons(playing) {
+      mainPlayIcon.textContent = playing ? '⏸' : '▶';
+      mainPlayText.textContent = playing ? 'Pausar' : 'Reproducir';
+      videoPlayBtn.textContent = playing ? '⏸' : '▶';
+    }
+
+    async function startPlayback() {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (e) {}
+      }
+
+      if (audioMode === 'full') {
+        // Modo Canción: masterAudio suena con volumen y el video es el lienzo visual
+        masterAudio.muted = false;
+        masterAudio.volume = 1.0;
+        sourceVideo.muted = true;
+
+        try { await masterAudio.play(); } catch (err) { console.warn('masterAudio play error:', err); }
+        try { await sourceVideo.play(); } catch (err) { console.warn('sourceVideo play error:', err); }
+      } else {
+        // Modo Video: el audio proviene directamente del video seleccionado
+        masterAudio.muted = true;
+        masterAudio.pause();
+        sourceVideo.muted = false;
+        sourceVideo.volume = 1.0;
+        connectVideoAudioNode();
+
+        try { await sourceVideo.play(); } catch (err) { console.warn('sourceVideo play error:', err); }
+      }
+
+      isPlaying = !masterAudio.paused || !sourceVideo.paused;
+      setPlayButtons(isPlaying);
+      updateTimeline();
+    }
+
+    function pausePlayback() {
+      masterAudio.pause();
+      sourceVideo.pause();
+      isPlaying = false;
+      setPlayButtons(false);
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        pausePlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    mainPlayBtn.addEventListener('click', togglePlay);
+    videoPlayBtn.addEventListener('click', togglePlay);
+
+    videoMuteBtn.addEventListener('click', () => {
+      masterAudio.muted = !masterAudio.muted;
+      sourceVideo.muted = !sourceVideo.muted;
+      videoMuteBtn.textContent = (masterAudio.muted || sourceVideo.muted) ? '🔇' : '🔊';
+    });
+
+    function updateModeUI() {
+      if (audioMode === 'full') {
+        const songDur = masterAudio.duration || 177;
+        loopModeBtn.textContent = isPiedadTrack ? '🎵 Piedad (2:57)' : `🎵 Canción (${formatTime(songDur)})`;
+        aspectModeTag.textContent = isPiedadTrack ? 'Piedad — Camila Moreno' : 'Canción Personalizada';
+        if (isPiedadTrack) sourceBadge.textContent = 'Piedad (Full 2:57)';
+        state.extinctionTime = Math.max(10, songDur - 13);
+        document.getElementById('param-extinction-time').max = Math.round(songDur);
+        document.getElementById('param-extinction-time').value = Math.round(state.extinctionTime);
+        document.getElementById('val-extinction-time').textContent = `${Math.round(state.extinctionTime)} s`;
+      } else {
+        const vidDur = sourceVideo.duration || 60;
+        loopModeBtn.textContent = `🎥 Video (${formatTime(vidDur)})`;
+        aspectModeTag.textContent = `Audio propio del video (${formatTime(vidDur)})`;
+        state.extinctionTime = Math.max(10, vidDur - 8);
+        document.getElementById('param-extinction-time').max = Math.round(vidDur);
+        document.getElementById('param-extinction-time').value = Math.round(state.extinctionTime);
+        document.getElementById('val-extinction-time').textContent = `${Math.round(state.extinctionTime)} s`;
+      }
+      updateTimeline();
+    }
+
+    // Alternar entre Canción Completa 2:57 y Audio del Video
+    loopModeBtn.addEventListener('click', () => {
+      const wasPlaying = isPlaying;
+      if (isPlaying) pausePlayback();
+
+      audioMode = (audioMode === 'full') ? 'video' : 'full';
+      updateModeUI();
+
+      if (wasPlaying) startPlayback();
+    });
+
+    // Cargar video nuevo (MP4 / MOV)
+    uploadVideoBtn.addEventListener('click', () => videoFileInput.click());
+    videoFileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      initAudio();
+      const url = URL.createObjectURL(file);
+      sourceVideo.src = url;
+      sourceVideo.load();
+      videoFileInput.value = '';
+
+      connectVideoAudioNode();
+
+      sourceVideo.onloadedmetadata = () => {
+        resizeCanvases();
+        const shortName = file.name.length > 14 ? file.name.substring(0, 12) + '…' : file.name;
+        sourceBadge.textContent = '🎥 ' + shortName;
+        updateModeUI();
+        startPlayback();
+      };
+    });
+
+    // Cargar canción nueva (MP3 / WAV / M4A)
+    uploadAudioBtn.addEventListener('click', () => audioFileInput.click());
+    audioFileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      initAudio();
+      const url = URL.createObjectURL(file);
+      masterAudio.src = url;
+      masterAudio.load();
+      audioMode = 'full';
+      isPiedadTrack = file.name.toLowerCase().includes('piedad');
+      const shortName = file.name.length > 14 ? file.name.substring(0, 12) + '…' : file.name;
+      sourceBadge.textContent = '🎵 ' + shortName;
+      audioFileInput.value = '';
+      masterAudio.onloadedmetadata = () => {
+        updateTimeline();
+        updateModeUI();
+        startPlayback();
+      };
+    });
+
+    // Soporte para arrastrar archivos directamente a la pantalla (Drag & Drop)
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      initAudio();
+      const url = URL.createObjectURL(file);
+      if (file.type.startsWith('video') || file.name.match(/\.(mp4|mov|webm)$/i)) {
+        sourceVideo.src = url;
+        sourceVideo.load();
+        connectVideoAudioNode();
+        sourceVideo.onloadedmetadata = () => {
+          resizeCanvases();
+          sourceBadge.textContent = 'Video: ' + file.name.substring(0, 12);
+          updateModeUI();
+          startPlayback();
+        };
+        startPlayback();
+      } else if (file.type.startsWith('audio') || file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+        masterAudio.src = url;
+        masterAudio.load();
+        audioMode = 'full';
+        updateModeUI();
+        sourceBadge.textContent = 'Audio: ' + file.name.substring(0, 12);
+        masterAudio.onloadedmetadata = () => { updateTimeline(); startPlayback(); };
+      }
+    });
+
+    micBtn.addEventListener('click', async () => {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        isMic = true;
+        sourceBadge.textContent = 'Micrófono Vivo';
+        micBtn.style.borderColor = '#00ff88';
+        micBtn.style.color = '#00ff88';
+      } catch (err) {
+        alert('Acceso a micrófono no permitido: ' + err.message);
+      }
+    });
+
+    // Botón de Forzar Extinción
+    const forceExtinctionBtn = document.getElementById('force-extinction-btn');
+    forceExtinctionBtn.addEventListener('click', () => {
+      state.forceExtinction = !state.forceExtinction;
+      forceExtinctionBtn.classList.toggle('active', state.forceExtinction);
+      forceExtinctionBtn.textContent = state.forceExtinction ? '🔥 Restaurar Llama' : '🕯️ Extinguir Ahora';
+    });
+
+    // Binding de Sliders
+    function bindSlider(id, prop, valId, suffix = '') {
+      const slider = document.getElementById(id);
+      const valDisp = document.getElementById(valId);
+      slider.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        state[prop] = v;
+        valDisp.textContent = `${v}${suffix}`;
+        if (prop === 'sparksDensity') initParticles(v);
+        if (prop === 'extinctionTime') updateTimeline();
+      });
+    }
+
+    bindSlider('param-beat', 'beatSensitivity', 'val-beat');
+    bindSlider('param-melt', 'meltDepth', 'val-melt');
+    bindSlider('param-reconstruct', 'reconstructionSpeed', 'val-reconstruct');
+    bindSlider('param-chroma', 'chromaSplit', 'val-chroma');
+    bindSlider('param-heat', 'heatShimmer', 'val-heat');
+    bindSlider('param-sparks', 'sparksDensity', 'val-sparks');
+    bindSlider('param-extinction-time', 'extinctionTime', 'val-extinction-time', ' s');
+    bindSlider('param-spectral', 'spectralIntensity', 'val-spectral');
+    bindSlider('param-smoke-blur', 'smokeBlur', 'val-smoke-blur');
+
+    // Alternar marco 9:16 y Pantalla Completa
+    const toggleViewBtn = document.getElementById('toggle-view-btn');
+    toggleViewBtn.addEventListener('click', () => {
+      state.is916 = !state.is916;
+      if (state.is916) {
+        viewport.className = 'viewport-9-16';
+        toggleViewBtn.textContent = '⛶ Full Pantalla';
+        guidelinesOverlay.style.display = 'none';
+      } else {
+        viewport.className = 'viewport-full';
+        toggleViewBtn.textContent = '📱 Marco 9:16';
+        guidelinesOverlay.style.display = 'block';
+      }
+      setTimeout(resizeCanvases, 50);
+    });
+
+    const controlsPanel = document.getElementById('controls-panel');
+    const toggleUIBtn = document.getElementById('toggle-ui-btn');
+    let uiVisible = true;
+
+    function toggleUI() {
+      uiVisible = !uiVisible;
+      controlsPanel.classList.toggle('hidden', !uiVisible);
+      playerControls.classList.toggle('hidden', !uiVisible);
+      toggleUIBtn.textContent = uiVisible ? '⚙' : '👁';
+    }
+
+    toggleUIBtn.addEventListener('click', toggleUI);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') toggleUI();
+      if (e.key === ' ') {
+        e.preventDefault();
+        togglePlay();
+      }
+    });
+
+    // --- GRABADOR DE VIDEO ---
+    const recordBtn = document.getElementById('record-btn');
+    recordBtn.addEventListener('click', () => {
+      if (!isRecording) startRecording();
+      else stopRecording();
+    });
+
+    function startRecording() {
+      recordedChunks = [];
+
+      // Creamos un canvas compuesto que unifica WebGL (video/efectos) + 2D (letras, chispas, 'PIEDAD')
+      recCanvas = document.createElement('canvas');
+      recCanvas.width = glCanvas.width;
+      recCanvas.height = glCanvas.height;
+      recCtx = recCanvas.getContext('2d');
+      recCtx.drawImage(glCanvas, 0, 0);
+      recCtx.drawImage(partCanvas, 0, 0);
+
+      // Captura fluida a 60 fotogramas por segundo
+      const stream = recCanvas.captureStream(60);
+
+      if (audioCtx && analyser) {
+        try {
+          const dest = audioCtx.createMediaStreamDestination();
+          analyser.connect(dest);
+          const track = dest.stream.getAudioTracks()[0];
+          if (track) stream.addTrack(track);
+        } catch (e) {
+          console.warn('Audio en grabación diferido:', e);
+        }
+      }
+
+      // Prioridad nativa para formato MP4 (H.264/AAC)
+      const mimeTypes = [
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=avc1',
+        'video/mp4;codecs=h264',
+        'video/mp4',
+        'video/webm;codecs=h264',
+        'video/webm;codecs=vp9',
+        'video/webm'
+      ];
+
+      let selectedMime = 'video/mp4';
+      for (const t of mimeTypes) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
+          selectedMime = t;
+          break;
+        }
+      }
+
+      const isMP4 = selectedMime.includes('mp4');
+      const fileExt = isMP4 ? 'mp4' : 'webm';
+
+      let options = { 
+        mimeType: selectedMime,
+        videoBitsPerSecond: 9000000 // 9 Mbps para máxima nitidez vertical
+      };
+
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        try {
+          mediaRecorder = new MediaRecorder(stream);
+        } catch (err2) {
+          alert('Grabador de video no soportado en este navegador: ' + err2.message);
+          return;
+        }
+      }
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: selectedMime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `piedad_reel_916_${Date.now()}.${fileExt}`;
+        a.click();
+      };
+
+      mediaRecorder.start(100); // Fragmentos cada 100ms
+      isRecording = true;
+      recordBtn.classList.add('recording');
+      recordBtn.textContent = '⏹ Detener Grabación';
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      isRecording = false;
+      recCanvas = null;
+      recCtx = null;
+      recordBtn.classList.remove('recording');
+      recordBtn.textContent = '⏺ Grabar Reel MP4';
+    }
+
+    resizeCanvases();
+    render();
+  </script>
+</body>
+</html>

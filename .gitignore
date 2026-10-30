@@ -1,0 +1,7 @@
+# Videos de gran tamaño que superan el límite de 100 MB de GitHub
+completesong.mp4
+animation.mp4
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
