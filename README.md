@@ -36,19 +36,19 @@ La plataforma está diseñada no como un reproductor estático, sino como un sin
 *Modos de Visualización: El botón 📱 Marco 9:16 / ⛶ Full Pantalla permite alternar entre el encuadre cerrado para dispositivos móviles (donde la vela es protagonista absoluta) y una experiencia inmersiva atmosférica con márgenes oscuros y letras flotantes.
 
 ## ¿Qué parámetros del sonido se modifican/analizan y por qué esos?
-* **A través de la Web Audio API y un analizador FFT (Fast Fourier Transform), se descompone la señal en bandas específicas:
+A través de la Web Audio API y un analizador FFT (Fast Fourier Transform), se descompone la señal en bandas específicas:
 
 * **Graves y Bombo (~40Hz – 200Hz):
-*Por qué: El registro grave posee impacto físico y peso corporal. En la canción, los golpes de percusión marcan el pulso vital; por eso gobiernan el desplazamiento vertical de la cera (derretimiento) y la aberración cromática.
+Por qué: El registro grave posee impacto físico y peso corporal. En la canción, los golpes de percusión marcan el pulso vital; por eso gobiernan el desplazamiento vertical de la cera (derretimiento) y la aberración cromática.
 * **Frecuencias Medias / Registro Vocal (~340Hz – 2000Hz):
-*Por qué: Es la zona tonal donde habita la voz de Camila Moreno. Mapear este rango a las ondas de calor (heat shimmer) hace que la refracción del aire alrededor de la llama literalmente "hable" al ritmo del canto.
+Por qué: Es la zona tonal donde habita la voz de Camila Moreno. Mapear este rango a las ondas de calor (heat shimmer) hace que la refracción del aire alrededor de la llama literalmente "hable" al ritmo del canto.
 * **Agudos (~2100Hz – 6800Hz):
-*Por qué: Aportan brillo y fragilidad. Modulan la velocidad de ascenso y el titileo sutil de las partículas flotantes.
+Por qué: Aportan brillo y fragilidad. Modulan la velocidad de ascenso y el titileo sutil de las partículas flotantes.
 * **Detección Dinámica de Transitorios (Beat Flux):
-*Por qué: Permite detectar el ataque percusivo instantáneo, logrando una respuesta sin latencia perceptible que amarra la pulsación de la palabra «PIEDAD» al compás exacto.
+Por qué: Permite detectar el ataque percusivo instantáneo, logrando una respuesta sin latencia perceptible que amarra la pulsación de la palabra «PIEDAD» al compás exacto.
 
-##¿Qué se descubre durante el proceso y la interacción?
-* **La materialización del tiempo sonoro: La música deja de ser un fenómeno abstracto e invisible que transcurre en el tiempo; en la pantalla, la música adquiere volumen, masa y viscosidad. Ver cómo la voz calienta la imagen y cómo el bombo derrite la cera produce una percepción única del sonido.
+## ¿Qué se descubre durante el proceso y la interacción?
+La materialización del tiempo sonoro: La música deja de ser un fenómeno abstracto e invisible que transcurre en el tiempo; en la pantalla, la música adquiere volumen, masa y viscosidad. Ver cómo la voz calienta la imagen y cómo el bombo derrite la cera produce una percepción única del sonido.
 * **La sublimación de la palabra: La palabra «PIEDAD» no se percibe leyendo letras, sino como un pulso lumínico que explota y se encoge. Se descubre que la tipografía en nuevos medios puede funcionar como luz 
 * **El usuario como co-creador performativo: La interactividad rompe la unidireccionalidad del videoclip tradicional. El usuario ya no solo "consume" la canción: define qué tan violento es el derretimiento, qué tan abrasivo es el calor o cuándo precipitar la extinción de la vela.
 ---
